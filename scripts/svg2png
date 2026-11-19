@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+// Usage: svg2png IN.svg OUT.png  -- renders an SVG to PNG (200 dpi equivalent: 1pt -> 200/72 px) and reports parse errors.
+// Fonts: system fonts are loaded; the default and sans-serif families are Noto Sans CJK JP.
+const { readFileSync, writeFileSync } = require('node:fs');
+const { resolve } = require('node:path');
+const { createRequire } = require('node:module');
+const loadResvg = () => {
+  for (const base of [resolve(__dirname, '..'), process.cwd()]) {
+    try { return createRequire(resolve(base, 'noop.js'))('@resvg/resvg-js'); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; }
+  }
+  console.log('error: @resvg/resvg-js not found (see README.md of the chem-figure-svg skill)'); process.exit(1);
+};
+const { Resvg } = loadResvg();
+const [inp, out] = process.argv.slice(2);
+if (!inp || !out) { console.log('usage: svg2png IN.svg OUT.png'); process.exit(2); }
+try {
+  const r = new Resvg(readFileSync(inp, 'utf8'), { fitTo: { mode: 'zoom', value: 200 / 72 }, background: 'white', font: { loadSystemFonts: true, defaultFontFamily: 'Noto Sans CJK JP', sansSerifFamily: 'Noto Sans CJK JP' } });
+  const png = r.render(); writeFileSync(out, png.asPng());
+  console.log(`ok ${out} ${png.width}x${png.height}px`);
+} catch (e) { console.log(`error: ${e.message}`); process.exit(1); }
